@@ -257,6 +257,9 @@ def main():
     te["err"] = te.y - te.pred  # actual - predicted
     te["pred_noedu"] = abl_preds["C minus education_stage"]
     cols = ["country", "t", "target_year", "tfr", "d5", "edu_f1524", "y", "pred", "err", "pred_noedu"]
+    te[["iso3", "country", "region", "t", "target_year", "tfr", "y", "pred", "pred_noedu"]].assign(
+        pred_gbm=preds["Gradient boosting (raw)"], pred_damped=preds["Damped trend"]).to_csv(
+        TAB / "test_predictions.csv", index=False)
     worst = te.reindex(te.err.abs().sort_values(ascending=False).index)[cols].head(8)
     worst.to_csv(TAB / "test_worst_cases.csv", index=False)
     log.append("largest test errors:\n" + worst.round(2).to_string(index=False))

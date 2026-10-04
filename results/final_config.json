@@ -38,11 +38,11 @@
   "best_baseline_cv": "Random forest (Set C)",
   "significance_cv": {
     "best_baseline": "Random forest (Set C)",
-    "paired_t": -0.7066419158974064,
-    "paired_p": 0.53072888127306,
-    "pooled_gap": -0.013753401852176491,
-    "ci_lo": -0.04022911795946948,
-    "ci_hi": 0.012643936285087481
+    "paired_t": -0.7066419158974017,
+    "paired_p": 0.5307288812730627,
+    "pooled_gap": -0.013753401852176399,
+    "ci_lo": -0.040229117959469415,
+    "ci_hi": 0.012643936285087583
   },
   "threshold": 0.2
 }

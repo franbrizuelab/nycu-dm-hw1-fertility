@@ -10,5 +10,6 @@ python3 03_eda.py                # Section 4 (training rows only)
 python3 04_folds.py              # rolling-origin folds with 10-year embargo
 python3 05_experiments.py        # tuning, baselines, ablation (CV only)
 python3 06_test_and_analysis.py  # one-time test evaluation + Section 8
+python3 08_practicality.py        # UN benchmark, scenario choice, ranges, births (analysis only)
 python3 07_paper_assets.py       # LaTeX tables and number macros
 cd ../paper && latexmk -pdf -interaction=nonstopmode main.tex > /dev/null && echo "paper/main.pdf built"

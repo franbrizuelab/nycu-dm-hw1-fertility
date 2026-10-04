@@ -81,3 +81,27 @@ Companion to `01_feasibility_assessment.md`. This document checks the finished b
 5. Build the 8-minute slides (the human side). Suggested figure reuse: Fig. 1a/1c (the key insight), the protocol diagram (embargo), Table 3, Fig. 3b, Table 6 plus Taiwan.
 6. Submit `HW1_<TeamID>.zip` containing `HW1_<TeamID>_report.pdf` and `HW1_<TeamID>_presentation.pdf/.pptx` (exact names, or −5 points), by **Mon 2026-10-19 23:59**.
 7. Optional: submit to the LLM TA Judge for the +6% bonus.
+
+---
+
+## 8. Update for v2 (2026-10-04): practicality
+
+New step `src/08_practicality.py`. It is analysis only: the frozen model is unchanged and the test lock still holds. The paper now has a new §8.3 and an added contribution (C4).
+
+| Question | Result |
+|---|---|
+| Do we beat what planners actually use (the UN medium projection made at the time; WPP 2008 for t=2005, WPP 2010 for t=2010, from the CRAN `wpp2008`/`wpp2010` archives)? | **With hindsight inputs, yes (0.225 vs 0.344), but that comparison is unfair.** Fed the UN's own then-current fertility estimates ("real time"), we **tie**: 0.338 vs 0.344, gap −0.006 [−0.027, 0.016]. We're worse at the 2005 origin, where WPP 2008 had data up to about 2008, and better at the 2010 origin (−0.040 [−0.071, −0.012]). **Averaging ours with the UN beats the UN alone**: −0.016 [−0.027, −0.005]. |
+| Does the forecast help pick the right UN scenario? | **Not by itself.** Real-time ours picks the right scenario 48% of the time vs 47% for "always medium" (McNemar p = 0.72); the average forecast does 50%. With today's revised estimates of the present it would be 63%. |
+| Why? | The present is uncertain. Fertility at the forecast date was later revised by 0.21 on average, and by 0.47 at TFR ≥ 4. That is as large as the ten-year forecast error itself. |
+| Ranges | 80% ranges from CV residuals are 0.83 wide (TFR < 2.5) to 1.21 wide (TFR ≥ 4), and covered 88% of test outcomes, so they are conservative. |
+| Births | The median error is 7.4% of annual births. For Taiwan in 2020, the forecast was 0.85 (80% range 0.43–1.26) against an actual 0.99, i.e. 22,000 births per year too few. |
+
+**New recommendation in the paper:** run the model next to the UN projection and plan on their average; budget for the 80% range; and invest in measuring *current* fertility.
+
+**Honesty notes for v2**
+- The real-time inputs approximate each revision's estimate at year t by extrapolating its last two 5-year periods.
+- Schooling keeps its current Barro-Lee values, a small advantage for us. The paper says so in a footnote.
+- The scenario band uses ±0.4. The WPP 2010 files show ±0.45 at 2020.
+- Sudan (redrawn in 2011) and Taiwan 2005 (absent from WPP 2008) are excluded from the UN comparison.
+
+**Space:** to fit 6 pages, the related-work table and the worst-case table were turned into prose (all numbers kept), and the α tuning curve is now described in a sentence. Page 6 is full, so any addition needs an equal cut.

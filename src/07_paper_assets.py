@@ -99,6 +99,8 @@ def main():
     cells = " & ".join(f"{float(p):g}" for p in tune.param[::2])
     vals = " & ".join(f"{m:.3f}" for m in tune.MAE_mean[::2])
     (GEN / "tab_tuning.tex").write_text(f"$\\alpha$ & {cells} \\\\\nCV MAE & {vals} \\\\")
+    mac("tuneOne", tune.set_index("param").loc[1.0, "MAE_mean"])
+    mac("tuneMax", tune.MAE_mean.iloc[-1])
     el = pd.read_csv(TAB / "cv_group_elimination.csv")
     mac("cvAllGroups", el.MAE_mean.iloc[0])
     kn = pd.read_csv(TAB / "cv_knot_final.csv").set_index("knot")
@@ -280,6 +282,14 @@ def main():
         lines.append(f"{nm} & {row.tfr:.2f} & {row.d5:+.2f} & {row.edu_f1524:.1f} & "
                      f"{row.y:.2f} & {row.pred:.2f} & {row.err:+.2f} \\\\")
     (GEN / "tab_errors.tex").write_text("\n".join(lines))
+    def case(i):
+        r = w.iloc[i]
+        nm = {"Central African Republic": "the Central African Republic"}.get(r.country, r.country)
+        sg = lambda x: f"{x:+.2f}".replace("-", "\\ensuremath{-}")  # noqa: E731
+        return (f"{nm} (TFR$_t$ {r.tfr:.2f}, $\\Delta_5$ {sg(r.d5)}, schooling {r.edu_f1524:.1f} yr; "
+                f"actual {r.y:.2f}, forecast {r.pred:.2f}, error {sg(r.err)})")
+    for i, key in enumerate(("One", "Two", "Three", "Four", "Five")):
+        mac(f"case{key}", case(i))
     ea = pd.read_csv(TAB / "test_east_asia.csv")
     for iso, key in (("Republic of Korea", "Kor"), ("Taiwan", "Twn"), ("China", "Chn")):
         rr = ea[(ea.country == iso) & (ea.target_year == 2020)].iloc[0]
@@ -322,6 +332,60 @@ def main():
     # Proper minus signs in generated table cells ("-0.26" -> "\ensuremath{-}0.26").
     for f in GEN.glob("tab_*.tex"):
         f.write_text(re.sub(r"(?<![\w$\-{])-(?=\d)", r"\\ensuremath{-}", f.read_text()))
+    # ---------------------------------------------------------------- practical use (Section 8.3)
+    un = pd.read_csv(TAB / "un_comparison.csv").set_index("rows")
+    dec = pd.read_csv(TAB / "scenario_decision.csv").set_index("policy")
+    allr, o05, o10 = un.loc["both"], un.loc["2005 origin (vs WPP 2008)"], un.loc["2010 origin (vs WPP 2010)"]
+    spec = [("UN medium projection", "un", "always UN medium"),
+            ("Ours, real-time inputs", "rt", "our forecast"),
+            ("Average of ours and UN", "avg", "average of ours and UN"),
+            ("Ours, revised inputs$^\\dagger$", "ours", "our forecast, revised inputs (hindsight)")]
+    lines = []
+    for lab, k, pol in spec:
+        lines.append(f"{lab} & {o05[f'MAE_{k}']:.3f} & {o10[f'MAE_{k}']:.3f} & {allr[f'MAE_{k}']:.3f} & "
+                     f"{100 * allr[f'hit_{k}']:.0f} & {100 * dec.loc[pol, 'accuracy']:.0f} \\\\")
+    lines.insert(3, "\\midrule")
+    (GEN / "tab_un.tex").write_text("\n".join(lines))
+    mac("unN", int(allr.n), "{:d}")
+    for k, key in (("un", "Un"), ("rt", "Rt"), ("avg", "Avg"), ("ours", "Rev")):
+        mac(f"unMae{key}", allr[f"MAE_{k}"])
+        mac(f"unMaeA{key}", o05[f"MAE_{k}"])
+        mac(f"unMaeB{key}", o10[f"MAE_{k}"])
+    for key, r in (("All", allr), ("A", o05), ("B", o10)):
+        mac(f"unGap{key}", r.gap_rt_un)
+        mac(f"unGap{key}Lo", r.gap_lo)
+        mac(f"unGap{key}Hi", r.gap_hi)
+    mac("unAvgGap", allr.gap_avg_un)
+    mac("unAvgGapLo", allr.gapavg_lo)
+    mac("unAvgGapHi", allr.gapavg_hi)
+    for key, pol in (("Med", "always UN medium"), ("Rt", "our forecast"), ("Avg", "average of ours and UN"),
+                     ("Rev", "our forecast, revised inputs (hindsight)")):
+        mac(f"scen{key}", 100 * dec.loc[pol, "accuracy"], "{:.0f}")
+    mc = pd.read_csv(TAB / "scenario_mcnemar.csv").iloc[0]
+    mac("scenP", mc.p, "{:.2f}")
+    st = pd.read_csv(TAB / "un_comparison_by_stage.csv").set_index("stage")
+    mac("unHighUn", st.loc[">=4", "MAE_un"])
+    mac("unHighRt", st.loc[">=4", "MAE_rt"])
+    mac("unHighRev", st.loc[">=4", "MAE_ours"])
+    rv = pd.read_csv(TAB / "vintage_revision.csv").iloc[0]
+    mac("revAll", rv.rev_all, "{:.2f}")
+    mac("revHigh", rv.rev_high, "{:.2f}")
+    mac("revLow", rv.rev_low, "{:.2f}")
+    pi = pd.read_csv(TAB / "prediction_intervals.csv", index_col=0)
+    mac("piCov", 100 * pi.loc["all", "coverage"], "{:.0f}")
+    mac("piWidthLow", pi.loc["<2.5", "width"], "{:.2f}")
+    mac("piWidthHigh", pi.loc[">=4", "width"], "{:.2f}")
+    mac("piCovHigh", 100 * pi.loc[">=4", "coverage"], "{:.0f}")
+    b = pd.read_csv(TAB / "births_error.csv", index_col=0)
+    mac("birthsMedErr", 100 * b.loc["all", "median_rel_err"], "{:.1f}")
+    bf = pd.read_csv(TAB / "births_focus.csv")
+    tw = bf[(bf.country == "Taiwan") & (bf.target_year == 2020)].iloc[0]
+    mac("twBirths", tw.births_k, "{:.0f}")
+    mac("twBirthsErr", tw.err_births_k, "{:.0f}")
+    mac("twLo", tw.lo, "{:.2f}")
+    mac("twHi", tw.hi, "{:.2f}")
+    mac("twUn", tw.un, "{:.2f}")
+
     (GEN / "numbers.tex").write_text("\n".join(f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(macros.items())) + "\n")
     print(f"wrote {len(macros)} macros and tables to {GEN}")
 

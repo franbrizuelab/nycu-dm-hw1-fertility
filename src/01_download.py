@@ -4,6 +4,7 @@ All sources are public and need no login. Files land in data/raw/; a manifest
 (data/raw/MANIFEST.tsv) records URL, size and checksum so results are traceable.
 """
 import hashlib
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -26,6 +27,14 @@ SOURCES = {
     "WUP2025-F02-Degree-of-Urbanization_percPop_by_category.xlsx":
         "https://population.un.org/wup/assets/Download/Countries%20and%20Aggregates/"
         "WUP2025-F02-Degree-of-Urbanization_percPop_by_category.xlsx",
+    # Archived UN projections (CRAN data packages by the UN Population Division / bayesPop team):
+    # WPP 2008 (medium TFR by 5-year period) and WPP 2010 (medium, high and low variants).
+    "wpp2008_1.0-1.tar.gz": "https://cran.r-project.org/src/contrib/wpp2008_1.0-1.tar.gz",
+    "wpp2010_1.2-0.tar.gz": "https://cran.r-project.org/src/contrib/wpp2010_1.2-0.tar.gz",
+}
+FALLBACK = {  # CRAN moves superseded versions to the archive
+    "wpp2008_1.0-1.tar.gz": "https://cran.r-project.org/src/contrib/Archive/wpp2008/wpp2008_1.0-1.tar.gz",
+    "wpp2010_1.2-0.tar.gz": "https://cran.r-project.org/src/contrib/Archive/wpp2010/wpp2010_1.2-0.tar.gz",
 }
 
 
@@ -45,8 +54,13 @@ def main():
         if not dest.exists():
             print(f"downloading {name}")
             # Default urllib user agent: a browser-like one triggers dataverse.nl's bot check.
-            with urllib.request.urlopen(url) as r:
-                data = r.read()
+            try:
+                with urllib.request.urlopen(url) as r:
+                    data = r.read()
+            except urllib.error.HTTPError:
+                url = FALLBACK[name]
+                with urllib.request.urlopen(url) as r:
+                    data = r.read()
             if data[:15].lower().startswith(b"<!doctype html"):
                 raise RuntimeError(f"{url} returned an HTML page instead of data")
             dest.write_bytes(data)
