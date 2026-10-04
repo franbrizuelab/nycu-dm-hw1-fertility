@@ -1,0 +1,11 @@
+__pycache__/
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.fdb_latexmk
+paper/*.fls
+results/figures/*.png
+Specs.txt
+style_template.txt

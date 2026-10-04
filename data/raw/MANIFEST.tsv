@@ -1,0 +1,7 @@
+file	bytes	sha256	url
+BL_v3_F.csv	1346709	2a0afa8e7c524d89fbb39c57f258056018ef852a6082de6588be2c91f7246261	https://raw.githubusercontent.com/barrolee/BarroLeeDataSet/master/BLData/BL_v3_F.csv
+BL_v3_M.csv	1351215	91fec5018884f1288e896b35e9d3eb6995f45cdefb39b87265ac34f3eac639ab	https://raw.githubusercontent.com/barrolee/BarroLeeDataSet/master/BLData/BL_v3_M.csv
+BL2013_F_v2.2.csv	3572127	2617799f2e75fe6f8a5f9aaa64fe3b4a15b671f69d04e54cd90e247d3a21ce5d	https://raw.githubusercontent.com/barrolee/BarroLeeDataSet/master/BLData/BL2013_F_v2.2.csv
+WPP2024_Demographic_Indicators_Medium.csv.gz	16557272	286ac36bb1415e2e1ade03acfef0a29f0e4c087e2f78e38c48f50c5df89082bc	https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz
+pwt1001.dta	3452645	746a483666a5371f8e686f8bfea6c20e211e5ecdd928842c6e01d2bd623ffb4c	https://dataverse.nl/api/access/datafile/354098
+WUP2025-F02-Degree-of-Urbanization_percPop_by_category.xlsx	1077514	3b262c6dcad2cc0ac5eef3e42c036207184de72926207e7d39640f7d45c4cedc	https://population.un.org/wup/assets/Download/Countries%20and%20Aggregates/WUP2025-F02-Degree-of-Urbanization_percPop_by_category.xlsx

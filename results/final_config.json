@@ -1,0 +1,48 @@
+{
+  "knot": 4.0,
+  "features": [
+    "tfr",
+    "d5",
+    "edu_f1524",
+    "edu_x_stage",
+    "stage"
+  ],
+  "alpha": 0.001,
+  "dropped_groups": [
+    "development_logs",
+    "region",
+    "curvature"
+  ],
+  "damped_phi": 0.6,
+  "rf_param": "leaf=5,mf=1.0",
+  "gbm_param": "lr=0.03,depth=2",
+  "ridge_raw_alpha": 10.0,
+  "setB_alpha": 10.0,
+  "setB_pool": [
+    "tfr",
+    "edu_f1524",
+    "edu_f2564",
+    "edu_m1524",
+    "edu_m2564",
+    "q5",
+    "gdppc",
+    "urban",
+    "reg_east",
+    "reg_europe",
+    "reg_latin",
+    "reg_middle",
+    "reg_south",
+    "reg_sub-saharan"
+  ],
+  "no_edu_alpha": 31.6,
+  "best_baseline_cv": "Random forest (Set C)",
+  "significance_cv": {
+    "best_baseline": "Random forest (Set C)",
+    "paired_t": -0.7066419158974064,
+    "paired_p": 0.53072888127306,
+    "pooled_gap": -0.013753401852176491,
+    "ci_lo": -0.04022911795946948,
+    "ci_hi": 0.012643936285087481
+  },
+  "threshold": 0.2
+}

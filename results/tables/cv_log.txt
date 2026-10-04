@@ -1,0 +1,93 @@
+stage knot CV:
+ knot alpha  MAE_mean
+  4.0    10    0.3503
+  4.5  31.6    0.3532
+  5.0 0.001    0.3582
+  5.5 0.001    0.3563
+  6.0 0.001    0.3586
+-> knot = 4.0
+
+elimination step 1: -level: 0.3531, -momentum: 0.3872, -curvature: 0.3485, -education_stage: 0.3631, -development_logs: 0.3405, -region: 0.3683
+
+elimination step 2: -level: 0.3592, -momentum: 0.3735, -curvature: 0.3391, -education_stage: 0.3646, -region: 0.3290
+
+elimination step 3: -level: 0.3573, -momentum: 0.3464, -curvature: 0.3281, -education_stage: 0.3314
+
+elimination step 4: -level: 0.4833, -momentum: 0.3480, -education_stage: 0.3447
+
+groups dropped by CV: ['development_logs', 'region', 'curvature']; final features (5): ['tfr', 'd5', 'edu_f1524', 'edu_x_stage', 'stage']
+
+knot on final set:
+ knot  MAE_mean
+  4.0    0.3281
+  4.5    0.3312
+  5.0    0.3397
+  5.5    0.3515
+  6.0    0.3658
+-> knot = 4.0
+
+variants:
+     method      param  MAE_mean  MAE_sd
+        OLS               0.3281  0.0518
+      Ridge      0.001    0.3281  0.0518
+      Lasso     0.0001    0.3281  0.0518
+Elastic Net 0.0001,0.8    0.3281  0.0518
+
+main CV:
+                          method           param  MAE_mean  MAE_sd  RMSE_mean  R2_mean  Hit_mean
+                   Training mean                     1.943   0.061      2.185   -0.631     0.048
+                     Persistence                     0.661   0.102      0.859    0.749     0.243
+                    Damped trend         phi=0.6     0.425   0.089      0.582    0.885     0.364
+  Single-feature OLS (schooling)                     0.807   0.034      1.045    0.630     0.193
+             Random forest (raw)   leaf=5,mf=1.0     0.354   0.040      0.478    0.923     0.371
+         Gradient boosting (raw) lr=0.03,depth=2     0.347   0.044      0.457    0.929     0.367
+              Ridge (raw, Set A)              10     0.367   0.068      0.491    0.918     0.334
+Ours: Ridge + engineered (Set C)           0.001     0.328   0.052      0.445    0.933     0.398
+           Random forest (Set C)   leaf=1,mf=1.0     0.342   0.025      0.443    0.933     0.381
+
+Ours vs Random forest (Set C): paired t over 4 folds t=-0.71, p=0.531; pooled CV MAE gap -0.014 [-0.040, 0.013] (country-cluster bootstrap)
+
+Set C vs Set A: fold gaps [-0.031 -0.053 -0.071 -0.   ], paired t p=0.084; pooled gap -0.039 [-0.071, -0.007]
+
+Set C vs Set B: fold gaps [ 0.002 -0.018 -0.059 -0.008], paired t p=0.216; pooled gap -0.021 [-0.047, 0.008]
+
+Set C vs Set B+: fold gaps [ 0.018 -0.037 -0.047 -0.008], paired t p=0.295; pooled gap -0.019 [-0.044, 0.006]
+
+Set B by k:
+                         method  MAE_mean  MAE_sd
+ Set B: top-3 raw by |Spearman|    0.3546  0.0369
+ Set B: top-5 raw by |Spearman|    0.3489  0.0480
+ Set B: top-8 raw by |Spearman|    0.3527  0.0743
+Set B: top-11 raw by |Spearman|    0.3623  0.0720
+
+ablation:
+                         method param  MAE_mean  MAE_sd  MAE_1980  MAE_1985  MAE_1990  MAE_1995
+             Set A: raw columns    10     0.367   0.068     0.404     0.424     0.368     0.272
+ Set B: top-5 raw by |Spearman|    10     0.349   0.048     0.371     0.388     0.356     0.280
+Set B+: top-5 of raw+engineered  3.16     0.347   0.053     0.356     0.407     0.344     0.279
+                    Set C: ours 0.001     0.328   0.052     0.373     0.371     0.297     0.271
+                  C minus level  31.6     0.483   0.017     0.477     0.508     0.468     0.481
+               C minus momentum 0.001     0.348   0.057     0.391     0.392     0.338     0.272
+        C minus education_stage  31.6     0.345   0.065     0.358     0.423     0.334     0.264
+        C plus development_logs 0.001     0.364   0.050     0.372     0.430     0.342     0.313
+                  C plus region 0.001     0.339   0.070     0.384     0.404     0.319     0.249
+               C plus curvature 0.001     0.329   0.054     0.378     0.372     0.296     0.270
+
+slices (pooled CV MAE):
+slice_by                           slice   n  Set A  Set C w/o education  Set C  Damped trend  RF (raw)
+   stage                            <2.5 199  0.284                0.258  0.249         0.320     0.275
+   stage                           2.5-4 116  0.272                0.267  0.272         0.335     0.266
+   stage                           4-5.5 107  0.515                0.415  0.378         0.471     0.435
+   stage                           >=5.5 158  0.441                0.463  0.435         0.592     0.465
+  region              Advanced Economies  96  0.303                0.194  0.201         0.236     0.204
+  region       East Asia and the Pacific  76  0.425                0.381  0.404         0.488     0.442
+  region         Europe and Central Asia  76  0.264                0.374  0.331         0.456     0.377
+  region Latin America and the Caribbean 100  0.240                0.263  0.236         0.342     0.209
+  region    Middle East and North Africa  72  0.604                0.579  0.516         0.675     0.564
+  region                      South Asia  28  0.597                0.537  0.511         0.653     0.479
+  region              Sub-Saharan Africa 132  0.356                0.310  0.304         0.387     0.370
+
+education effect, MAE(C) - MAE(C w/o education), country-cluster bootstrap 95% CI:
+  all: -0.017 [-0.040, 0.008]
+  TFR>=4.0: -0.032 [-0.077, 0.015]
+  TFR<4.0: -0.004 [-0.025, 0.018]

@@ -1,0 +1,269 @@
+\documentclass[11pt]{article}
+\usepackage[preprint]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{CJKutf8}
+\newcommand{\zh}[1]{\begin{CJK}{UTF8}{bsmi}#1\end{CJK}}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+% All numbers below come from generated/numbers.tex (src/07_paper_assets.py).
+\input{generated/numbers.tex}
+% \input is not expandable inside tabular; use the TeX primitive for generated table bodies.
+\makeatletter\newcommand{\tabinput}[1]{\@@input #1 }\makeatother
+
+% ---------------------------------------------------------------- TEAM: fill these in
+\newcommand{\teamid}{13}
+\newcommand{\repourl}{\url{https://github.com/franbrizuelab/nycu-dm-hw1-fertility}}
+
+\title{Does Women's Schooling Today Improve a Ten-Year Fertility Forecast?\\A Leak-Free Linear Benchmark for 145 Countries}
+
+\author{Team \teamid{} \\
+  \zh{李尚哲} (314580057) \quad \zh{呂丞頤} (314580055) \quad \zh{黃駿甯} (314580075) \quad \zh{吳美真} (414551035) \\
+  \zh{孫傅康} (112550176) \quad \zh{傅維雨} (112550149) \quad \zh{張凱華} (315554024) \quad \zh{李玠廷} (315554034) \\
+  National Yang Ming Chiao Tung University \\
+  GitHub: \repourl}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Planners who size school intakes and pension systems need each country's fertility a decade ahead. We ask how much women's schooling adds to a ten-year forecast of the total fertility rate (TFR) beyond fertility's own trajectory. Using UN and Barro--Lee data for \nCountries{} countries under a rolling-origin protocol with a ten-year embargo, a \nFeatures{}-feature ridge model (current TFR, its five-year change, young women's schooling, and a transition-stage hinge with its schooling interaction) reaches a test MAE of \teMaeOurs{} children per woman for 2015 and 2020. That is \gapGbmAbs{} lower than gradient boosting (95\% CI of the gap [\gapGbmLo, \gapGbmHi]) and \gapDampedAbs{} lower than a damped-trend rule, but stays just above our \threshold{}-child decision threshold. Schooling has a significant coefficient that grows with the transition stage, yet it improves out-of-sample MAE by only \eduGainLo--\eduGainHi. Fertility's own momentum already carries most of what schooling knows.
+\end{abstract}
+
+% ======================================================================
+\section{Introduction}
+Taiwan's TFR fell from \twnSixty{} in 1960 to \twnTwentyThree{} in 2023 \citep{un2024wpp}, and school, teacher and pension planning commits resources about a decade before the children arrive. The planner's default tool is the UN \emph{World Population Prospects} (WPP). Its high and low variants sit $\pm$0.4 children per woman around the medium variant in years 6--10 of a projection \citep{un2024methodology}. \textbf{The decision we support} is which of these scenarios to plan for: a ten-year forecast with an error below 0.2, half that spacing, tells the planner which scenario their country is on.
+
+Women's education is the most cited driver of fertility decline \citep{lutz2011global,bongaarts2003completing}, and education now drives global fertility forecasts \citep{vollset2020fertility}. For a forecaster the question is whether today's schooling reveals anything that today's fertility and its trend do not. \textbf{Research question:} \emph{How much does women's schooling at year $t$ improve a linear forecast of TFR at $t{+}10$ beyond fertility's own trajectory, and for which countries?}
+
+\textbf{Contributions.} (C1) A leak-free benchmark for ten-year TFR forecasting across \nCountries{} countries. On it, a \nFeatures{}-feature linear model beats tree ensembles and a damped-trend rule on 2015/2020 targets (\S\ref{sec:main}). (C2) Ablation evidence that fertility's level and momentum carry most of the skill, and that our engineered set beats both the raw columns and a correlation-ranked set (\S\ref{sec:ablation}). (C3) A quantification of education's role. Its coefficient is stage-dependent and significant in sample (\S\ref{sec:coef}), but its out-of-sample gain is small and not significant (\S\ref{sec:ablation}).
+
+% ======================================================================
+\section{Related Work}
+The UN's Bayesian hierarchical model \citep{alkema2011probabilistic,raftery2014bayesian} projects TFR from each country's own history plus the pooled shape of the transition, with no education input. Projected from a 1990--95 base, its median had mean squared errors of 0.17 for 2000--05 and 0.21 for 2005--10. IHME \citep{vollset2020fertility} instead models completed cohort fertility as a function of female educational attainment and contraceptive met need, and reports scenario uncertainty rather than a held-out error. At the micro level, \citet{kebede2019stalls} trace the stalled African fertility declines of the 2000s to education disruptions of the 1980s, and \citet{adhikari2024forecasting} forecast African fertility by education group from 138 DHS surveys and validate on later birth cohorts. \textbf{Our difference} (Table~\ref{tab:related}): we test schooling as a \emph{forecasting input} under strict time ordering, against fertility-only baselines that share the same folds. We measure its incremental value, not its association.
+
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}L{1.05cm}L{1.55cm}L{1.6cm}L{1.2cm}L{1.65cm}@{}}
+\toprule
+Work & Data & Features & Model & Reported error \\
+\midrule
+Alkema '11 & WPP 2008, 196 countries & own TFR history & Bayesian hierarchical & MSE 0.17--0.21 (10--15 yr ahead) \\
+Vollset '20 & GBD, 195 countries & fem.\ education, contraception & random walk (cohort TFR) & scenario intervals only \\
+Adhikari '24 & 138 DHS, 39 countries & education group, local schooling & Poisson + diffusion & cohort fit, qualitative \\
+\midrule
+\textit{Ours} & WPP 2024 + Barro--Lee, \nCountries{} countries & level, momentum, stage-gated schooling & Ridge & MAE \teMaeOurs, RMSE \teRmseOurs{} (10 yr) \\
+\bottomrule
+\end{tabular}
+\caption{Prior TFR forecasting work. The errors come from different periods and horizons, so they give context rather than a direct comparison.}
+\label{tab:related}
+\end{table}
+
+% ======================================================================
+\section{Task Definition and Data}
+\label{sec:data}
+\textbf{Task card.} \emph{Target:} the period TFR of a country in year $t{+}10$, in children per woman (observed range \yMin--\yMax). \emph{One row:} a country at start year $t\in\{1955,1960,\dots,2010\}$. \emph{Inputs:} only values dated $t$ or earlier: TFR$_t$ and TFR$_{t-5}$, under-5 mortality, years of schooling by sex and age band, GDP per capita, urban share and region. \emph{Prediction time:} year $t$.
+
+\textbf{Sources.} TFR and under-5 mortality come from WPP 2024, which has observed estimates through 2023 \citep{un2024wpp}. Schooling comes from Barro--Lee v3 (sex $\times$ 10-year age band, 1950--2015) \citep{barro2013new}. The older v2.2, with 5-year bands, is used only in \S\ref{sec:eda}. GDP per capita comes from Penn World Table 10.01 \citep{feenstra2015next} and urban share from WUP 2025 \citep{un2025wup}. All sources are public and include Taiwan, which World Bank data do not. A script downloads every file with a SHA-256 checksum; an ISO3 join (ROM/SER mapped to ROU/SRB) gives \nCountries{} countries.
+
+\textbf{Preprocessing and why.} (i) Targets stop at 2020, because WPP values after 2023 are projections, and a projected target would leak the UN's model into ours. (ii) Rows with $t{=}2000$ are embargoed (\S\ref{sec:setup}). (iii) GDP is missing for \gdpMissing\% of training rows, mostly in the 1950s--60s. We impute the training-fold median with a missing indicator inside each fold, because dropping these rows would remove early Africa. (iv) Mortality and GDP are log-transformed because both are right-skewed (Table~\ref{tab:summary}). (v) Features are standardized inside the pipeline. (vi) Extreme values are real (TFR up to \yMax), so nothing is clipped. The panel has \rowsTrain{} training rows ($t\le1995$), \rowsTest{} test rows ($t\in\{2005,2010\}$) and \rowsGap{} embargoed rows.
+
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Variable & Mean & SD & Min & Max & Miss.\% \\
+\midrule
+\tabinput{generated/tab_summary.tex}
+\bottomrule
+\end{tabular}
+\caption{Training rows ($t\le1995$, n=\rowsTrain). TFR in children per woman. $\Delta_5$TFR$_t=\mathrm{TFR}_t-\mathrm{TFR}_{t-5}$.}
+\label{tab:summary}
+\end{table}
+
+% ======================================================================
+\section{Exploratory Feature Analysis}
+\label{sec:eda}
+All statistics in this section use training rows only (Fig.~\ref{fig:eda}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{../results/figures/fig_eda.pdf}
+\caption{Exploration on training rows. (a) Future TFR against young women's schooling, with three country paths. (b) The 10-year change is largest in mid-transition. (c) Cohort lag curve: the schooling of women aged 15--24 at $t$ carries the most information beyond TFR$_t$. (d) Partial correlation of schooling with the future change, given TFR$_t$, by stage. Bars: 95\% CIs from a country-cluster bootstrap.}
+\label{fig:eda}
+\end{figure*}
+
+\textbf{H1 (transition curve).} Young women's schooling tracks future TFR closely (Pearson $r{=}\rEduY$, Spearman $\rho{=}\rhoEduY$; Fig.~\ref{fig:eda}a), but current TFR tracks it more closely still ($r{=}\rTfrY$). Given TFR$_t$ and TFR$_t^2$, schooling's partial $r$ drops to \partialEduTfr. \emph{Decision:} keep schooling, but test it as an increment on top of fertility's own level.
+\textbf{H2 (which cohort).} With Barro--Lee v2.2's 5-year bands, the partial $r$ with TFR$_{t+10}$ given TFR$_t$ peaks at ages 20--24 (\lagYoung) and fades to \lagOld{} at 55--59 (Fig.~\ref{fig:eda}c). These women are 25--34, the peak childbearing ages, at $t{+}10$. \emph{Decision:} use schooling of women 15--24, a domain-derived feature.
+\textbf{H3 (redundancy).} Female and male schooling are nearly collinear ($r{=}\rFemMale$, VIF up to \vifEduMax), and the gender gap adds nothing given average schooling and TFR (partial $r{=}\partialGap$). \emph{Decision:} drop male schooling and the gap. H3 is rejected.
+\textbf{H4 (confounding).} Controlling for log GDP and log mortality, schooling keeps a partial $r$ of \partialEduGdpQ. Adding TFR$_t$, TFR$_t^2$ and $\Delta_5$ shrinks it to \partialEduAll, an early warning that schooling's information overlaps with the trajectory.
+\textbf{H5 (stage).} Decline is fastest in mid-transition (Fig.~\ref{fig:eda}b). At TFR$_t\geq5.5$, schooling's partial $r$ with the future change is \stagePreR{} [\stagePreLo, \stagePreHi], against \stageMidR{} to \stageLowR{} at lower stages (Fig.~\ref{fig:eda}d). \emph{Decision:} gate schooling by stage.
+\textbf{H6 (momentum).} The last five-year change correlates with the next ten-year change ($r{=}\rDfiveDy$). \emph{Decision:} add $\Delta_5$.
+\textbf{H7 (stability).} The schooling slope given TFR$_t$ shrinks from \slopeSixties{} (1960s) to \slopeNineties{} (1990s). Fewer countries remain pre-transition over time, so this drift fits H5 (revisited in \S\ref{sec:errors}). A Pearson/Spearman/MI table of all candidates (in the repository) gives the Set~B ranking.
+
+% ======================================================================
+\section{Method}
+\label{sec:method}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[node distance=1.6mm, every node/.style={font=\scriptsize},
+  box/.style={draw, rounded corners=1.5pt, align=left, text width=0.92\columnwidth, inner sep=2pt, fill=blue!4},
+  arr/.style={-{Stealth[length=1.4mm]}, thick}]
+\node[box] (raw) {\textbf{Raw data}: WPP 2024, Barro--Lee v3, PWT 10.01, WUP 2025 $\rightarrow$ country time series};
+\node[box, below=of raw] (panel) {\textbf{Panel}: ISO3 join; row = country $\times$ $t$; target TFR$_{t+10}$; embargo $t{=}2000$ $\rightarrow$ \rowsTrain{} train / \rowsTest{} test rows};
+\node[box, below=of panel] (feat) {\textbf{Features}: TFR$_t$, $\Delta_5$TFR$_t$, schooling $S_t$ (women 15--24), $h_t{=}(\mathrm{TFR}_t{-}\knot)_+$, $S_t h_t$ $\rightarrow$ \nFeatures{} columns};
+\node[box, below=of feat] (model) {\textbf{Linear model}: impute $\rightarrow$ standardize $\rightarrow$ Ridge ($\alpha{=}\alphaSel$ by rolling-origin CV) $\rightarrow$ fitted $\beta$};
+\node[box, below=of model] (eval) {\textbf{Prediction \& evaluation}: TFR$_{t+10}$ (children/woman) $\rightarrow$ MAE, RMSE, Hit@0.2; test scored once};
+\foreach \a/\b in {raw/panel, panel/feat, feat/model, model/eval} \draw[arr] (\a) -- (\b);
+\end{tikzpicture}
+\caption{Pipeline, input $\rightarrow$ output per stage. Imputation, scaling and model are fitted inside each training fold.}
+\label{fig:pipeline}
+\end{figure}
+
+\textbf{Feature groups} (Fig.~\ref{fig:pipeline}). \emph{Level}: TFR$_t$. \emph{Momentum} (a lag feature, H6): $\Delta_5$TFR$_t$, the pace of an ongoing decline. \emph{Education stage} (domain-derived, H2/H5): $S_t$, the hinge $h_t=\max(0,\mathrm{TFR}_t-\kappa)$ and the interaction $S_t h_t$. Schooling gets an extra slope while fertility is high, and the hinge lets the decline depend on the stage. The knot was set a priori at 5.5 (Fig.~\ref{fig:eda}d) and tuned over $\{4,4.5,\dots,6\}$ by CV, which picked $\kappa{=}\knot$ (CV MAE \abC{} vs.\ \cvKnotFiveFive{} at 5.5). \emph{Curvature} (TFR$_t^2$, Fig.~\ref{fig:eda}b), \emph{development} (log mortality, log GDP, urban share; H4) and \emph{region} dummies were also candidates. Backward group elimination on CV removed development, then region, then curvature, and lowered CV MAE from \cvAllGroups{} to \abC.
+
+\textbf{Model choice and tuning.} The hinge is a function of TFR$_t$, so the two are collinear by construction (VIF up to \vifMax; Table~\ref{tab:coef}). Ridge's L2 penalty stabilizes both coefficients without discarding either, whereas Lasso's selection has nothing useful to drop here. We search 13 log-spaced values of $\alpha\in[10^{-3},10^{3}]$ on the folds of \S\ref{sec:setup}, minimizing mean fold MAE:
+
+\smallskip
+\centerline{\scriptsize\setlength{\tabcolsep}{2.2pt}\begin{tabular}{@{}lrrrrrrr@{}}\tabinput{generated/tab_tuning.tex}\end{tabular}}
+\smallskip
+
+\noindent CV MAE is flat for $\alpha\le1$, so CV selects $\alpha{=}\alphaSel$. With \nFeatures{} features and \rowsTrain{} rows the penalty barely binds: OLS, Lasso and Elastic Net all reach \cvOLS. We therefore interpret OLS estimates in \S\ref{sec:coef}. Predictions are not clipped; the smallest test prediction is \minPred.
+
+% ======================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+\textbf{Validation: a planner standing in year $v$.} A row with start year $t$ reveals TFR$_{t+10}$, so a planner at year $v$ may train only on rows with $t+10\le v$. This ten-year embargo is violated by shuffled K-fold and by a row-based \texttt{TimeSeriesSplit}. We use four rolling-origin folds that validate at $v\in\{1980,\dots,1995\}$ and train on $t\le v-10$ (\foldMinRows--\foldMaxRows{} rows). Each fold is a full cross-section of \nCountries{} countries, and there are only four because the data come in 5-year steps. Saved fold keys are reused by every method; we report mean $\pm$ SD over folds. \emph{Test:} the frozen design is refit on all $t\le1995$ rows and scored once on $t\in\{2005,2010\}$ (targets 2015, 2020). The scoring script stores a hash of the configuration and refuses to run if the configuration changes. GroupKFold is not used, since planners forecast known countries; leave-one-region-out is a robustness check. \emph{Disclosure:} before modelling, while checking coverage, we computed baseline-only statistics on test rows. No model saw test data before the freeze.
+
+\textbf{Metrics and threshold.} MAE (children per woman) is the typical miss. RMSE stresses large misses (schools built for a rebound that never comes). R$^2$ is context only, being inflated by between-country variance. Hit@0.2 is the share of country-years forecast within 0.2. \textbf{Decision threshold: MAE $\le$ \threshold.} WPP's high and low variants sit $\pm$0.4 from the medium variant at this horizon \citep{un2024methodology}, so an error below the midpoint identifies the right scenario.
+
+\textbf{Baselines.} In increasing strength: the training mean; persistence (TFR$_{t+10}{=}$TFR$_t$); a damped trend TFR$_t+2\phi\Delta_5$ with $\phi{=}\dampedPhi$ tuned by CV; single-feature OLS on schooling; random forest and gradient boosting on the raw columns, with grids tuned on the same folds; ridge on the raw columns; and a random forest on our features. We use scikit-learn \citep{pedregosa2011scikit} and statsmodels \citep{seabold2010statsmodels}. \textbf{Significance} is tested with a paired $t$-test over the fold MAEs and a country-cluster bootstrap (2,000 resamples of countries) of MAE gaps, on pooled CV rows and on the test set.
+
+% ======================================================================
+\section{Results}
+\subsection{Main results}
+\label{sec:main}
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+& CV & \multicolumn{4}{c}{Test (targets 2015, 2020)} \\
+\cmidrule(l){3-6}
+Method & MAE{\tiny$\pm$SD} & MAE & RMSE & R$^2$ & Hit \\
+\midrule
+\tabinput{generated/tab_main.tex}
+\bottomrule
+\end{tabular}
+\caption{Main results in children per woman. CV: mean$\pm$SD over 4 folds. Hit: share of test rows with $|$error$|<0.2$. Bold: best per column.}
+\label{tab:main}
+\end{table}
+
+\textbf{Overall.} Our model has the lowest CV MAE (\cvMaeOurs{} $\pm$ \cvSdOurs) and the lowest test MAE: \teMaeOurs{}, 95\% CI [\teMaeLo, \teMaeHi] (Table~\ref{tab:main}). It forecasts \teHitOurs\% of country-years within 0.2. \textbf{Threshold:} the test MAE exceeds the \threshold{} threshold by \thrExcess{}, and the CI reaches the threshold only at its lower end, so on average the forecast does not yet reliably pick the UN scenario. \textbf{Against the strongest baselines,} the test MAE gaps (ours $-$ baseline, country-cluster bootstrap CI) are \gapGbm{} [\gapGbmLo, \gapGbmHi] vs.\ gradient boosting, \gapRfC{} [\gapRfCLo, \gapRfCHi] vs.\ a random forest on the same features and \gapDamped{} [\gapDampedLo, \gapDampedHi] vs.\ the damped trend. In CV, the gap to the best baseline (random forest on our features) is not significant (paired $t$, $p{=}\cvPairedP$; pooled \cvGapBest{} [\cvGapBestLo, \cvGapBestHi]). We therefore claim a consistent edge, not a decisive win. \textbf{Why it wins:} trees predict piecewise constants learned on high-fertility 1955--95 data, while ridge extrapolates level plus momentum smoothly. The gap is widest at TFR$_t\in[\knot,5.5)$: \slCOnset{} for ours against \slGbmOnset{} for gradient boosting (Fig.~\ref{fig:test}b). Test errors are below CV errors for every method because ten-year changes were smaller in 2005--20 (persistence: \cvMaePersist{} $\to$ \teMaePersist).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{../results/figures/fig_test.pdf}
+\caption{Test set, scored once. (a) Predicted vs.\ actual TFR$_{t+10}$, with a $\pm$0.2 band. The three largest errors are labelled and Taiwan is circled. (b) Test MAE by transition stage: ours, ours without the education group, and gradient boosting on raw inputs.}
+\label{fig:test}
+\end{figure*}
+
+\subsection{Feature ablation}
+\label{sec:ablation}
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+& CV MAE & \multicolumn{4}{c}{Fold MAE (validation $t$)} & Test \\
+\cmidrule(lr){3-6}
+Feature set & {\tiny$\pm$SD} & 1980 & 1985 & 1990 & 1995 & MAE \\
+\midrule
+\tabinput{generated/tab_ablation.tex}
+\bottomrule
+\end{tabular}
+\caption{Ablation: same model (Ridge), folds and $\alpha$ grid; only the features change. Set B is ranked inside each training fold, with $k{=}\nFeatures$ to match the size of Set C. ``--'': scored on CV only.}
+\label{tab:ablation}
+\end{table}
+
+\textbf{A vs.\ B vs.\ C} (Table~\ref{tab:ablation}). Set C beats the raw columns (A) in every fold, with a pooled gap of \gapCvsA{} [\gapCvsALo, \gapCvsAHi] (paired $p{=}\pCvsA$ over only four folds), and on test it scores \teMaeOurs{} against \teA. Set B, the top-\nFeatures{} raw columns by $|\rho|$, scores \abB{} in CV and \teB{} on test. C beats B in three of four folds (gap \gapCvsB{} [\gapCvsBLo, \gapCvsBHi]). The correlation ranking picks TFR, mortality and schooling but never momentum, because $\Delta_5$ barely correlates with the \emph{level} of future TFR ($|r|{=}\rDfiveY$) even though it carries the next \emph{change}. Even when it may also pick our engineered columns, it reaches only \abBplus.
+
+\textbf{Which groups matter.} Removing the level raises CV MAE from \abC{} to \abNoLevel, and removing momentum raises it to \abNoMom. The \textbf{education group} lowers CV MAE from \abNoEdu{} to \abC{}, winning in three of four folds, but the pooled gap is not significant: \cvEduGapAll{} [\cvEduGapAllLo, \cvEduGapAllHi]. On test it shrinks to \teEduGapAll{} [\teEduGapAllLo, \teEduGapAllHi]. Keeping the hinge but removing schooling scores \teHinge{} on test, so schooling \emph{given} the hinge changes test MAE by \teHingeGapAll{} [\teHingeGapAllLo, \teHingeGapAllHi]; without schooling, the hinge predicts declines that do not happen. \textbf{Slices.} In CV the education gain is concentrated where the gate is open (TFR$_t\geq\knot$: \cvEduGapHigh{} [\cvEduGapHighLo, \cvEduGapHighHi], n=\cvEduGapHighN), as H5 predicts. On test only \teEduGapHighN{} rows sit above the knot, and there the gain vanishes: \teEduGapHigh{} [\teEduGapHighLo, \teEduGapHighHi]. \textbf{Cost:} schooling data are free but 5-yearly (ending 2015) and add three interpretable coefficients; in today's mostly low-fertility world their accuracy return is marginal.
+
+% ======================================================================
+\section{Analysis}
+\subsection{Coefficients and significance}
+\label{sec:coef}
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrcrr@{}}
+\toprule
+Feature (standardized) & $\beta$ & 95\% CI & $p$ & VIF \\
+\midrule
+\tabinput{generated/tab_coef.tex}
+\bottomrule
+\end{tabular}
+\caption{Final model refit on all \rowsTrain{} training rows, $\beta$ in children per woman per SD. OLS with country-clustered errors (Wald $t$-test, \nCountries{} clusters). In-sample $R^2{=}\olsRsq$.}
+\label{tab:coef}
+\end{table}
+
+Rows from the same country repeat and overlap in time, so Table~\ref{tab:coef} uses country-clustered errors. Ridge CIs from 1,000 country-cluster bootstrap resamples agree within \ridgeCiDiff. \textbf{Momentum} is positive, supporting H6: a country whose TFR fell by one child over the last five years is forecast \bDfiveRaw{} children lower ten years on. \textbf{Schooling} is negative (H1), and so is its interaction with the stage, supporting H5. In raw units, one more year of schooling for women aged 15--24 lowers the forecast by \effTwo{} [\effTwoLo, \effTwoHi] children at TFR$_t\le\knot$, by \effFive{} at TFR$_t{=}5$ and by \effSeven{} [\effSevenLo, \effSevenHi] at TFR$_t{=}7$. \textbf{Statistical vs.\ practical significance:} at low fertility, a 3-year schooling gap moves the forecast by only \effThreeLow{} children, below the 0.2 threshold. At TFR 7 the same gap moves it by \effThreeHigh{} children, which matters for planning. \textbf{H4 revisited:} schooling stays significant in sample after controlling for the trajectory ($p{<}0.001$), yet \S\ref{sec:ablation} shows little out-of-sample gain. \textbf{H2/H3 revisited:} swapping in adult (25--64) schooling worsens CV MAE slightly (\cvAdult{} vs.\ \abC), and adding the gender gap changes it negligibly (\cvGap). The hinge is positive, meaning high-fertility countries with \emph{little} schooling decline slowly. Its VIF of \vifStage{} and TFR's VIF of \vifTfr{} reflect collinearity by construction, so these two coefficients must be read jointly.
+
+\subsection{Error analysis}
+\label{sec:errors}
+\begin{table}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Country (2015) & TFR$_t$ & $\Delta_5$ & $S_t$ & Actual & Pred. & Error \\
+\midrule
+\tabinput{generated/tab_errors.tex}
+\bottomrule
+\end{tabular}
+\caption{The five largest test errors, all for target year 2015 ($t{=}2005$). Error = actual $-$ predicted, in children per woman. $S_t$: schooling of women aged 15--24 (years).}
+\label{tab:errors}
+\end{table}
+
+\textbf{Cases} (Table~\ref{tab:errors}). All five largest errors are \emph{under}-predictions for 2015. Mongolia and Kyrgyzstan were falling or flat at $t{=}2005$, then rose. Egypt reversed in the same way. Zimbabwe stalled, and the Central African Republic, where the hinge correctly expected little change, rose instead. Each turn came from information the model never sees (policy, crisis, schooling disruption).
+\textbf{Shared pattern.} Residuals at the 2005 origin are biased upward (\teBiasYearA{} children, versus \teBiasYearB{} at 2010), most of all in the Middle East and North Africa (\slMenaBias) and Sub-Saharan Africa (\slSsaBias). This is the drift of H7: declines learned from 1955--95 are too fast for 2005--15, when several countries stalled \citep{kebede2019stalls}. East Asia fails the other way. Korea's 2020 TFR was \eaKorY{} against a forecast of \eaKorP{} (\eaKorE), and China's error was \eaChnE, because no training row shows a fall below 1 from an already low level. Taiwan, our motivating case, is forecast well: \eaTwnFifteenY{} vs.\ \eaTwnFifteenP{} for 2015 and \eaTwnY{} vs.\ \eaTwnP{} for 2020.
+\textbf{Robustness.} Retraining without a region changes that region's test MAE by at most \lorMaxDiff{} (Sub-Saharan Africa: \lorSsaIn{} $\to$ \lorSsaOut), so the model relies on dynamics that transfer across regions.
+\textbf{First fix:} add the cohort-to-cohort \emph{change} in young women's schooling, the disruption signal of \citet{kebede2019stalls}, and let momentum decay with calendar time, rather than switching to a bigger model.
+
+% ======================================================================
+\section{Conclusion and Limitations}
+\textbf{Answer.} Knowing women's schooling today improves a ten-year linear fertility forecast only slightly: by \eduGainLo--\eduGainHi{} children per woman on 2015/2020 targets and by \cvEduGainAbs{} in CV, mostly in high-fertility countries. Its in-sample, stage-dependent effect is nonetheless real (\effTwo{} to \effSeven{} per year). The skill of our \nFeatures{}-feature ridge model (test MAE \teMaeOurs, ahead of tree ensembles and the damped trend) comes from fertility's level and momentum. \textbf{Recommendation:} planners can use this transparent model as a first screen of which UN scenario applies, while expecting typical errors of 0.2--0.25. Where TFR is above \knot, schooling belongs in the forecast. Where fertility has already turned, the main risk is a reversal that no input here anticipates.
+
+\textbf{Limitations.} \emph{Data:} WPP 2024 estimates the past with hindsight, so a real planner in 2005 had noisier inputs and our errors are optimistic. Coverage is the \nCountries{} Barro--Lee countries in 5-year steps, which allows only four CV folds, and design selection reused those folds, so the CV scores of the chosen design are optimistic; the test set is the unbiased check. \emph{Linearity and extrapolation:} the model has no floor below past lows, and it missed East Asia's post-2015 collapse. \emph{Threshold:} 0.2 assumes a planner choosing among UN variants. An average MAE hides country errors, which is why we also report Hit@0.2. \emph{Inference:} the analysis is ecological and predictive, not causal. \textbf{Next experiment:} add cohort schooling change and contraceptive prevalence, and compare against archived WPP 2006/2008 projections made from the same information set.
+
+% ======================================================================
+\section*{Contributions of Each Member}
+\begin{itemize}\setlength\itemsep{0pt}\setlength\topsep{0pt}\setlength\parskip{0pt}
+\item \zh{李尚哲} (314580057): data exploration (\S4, Fig.~1).
+\item \zh{呂丞頤} (314580055): topic feasibility research (\S1--2).
+\item \zh{黃駿甯} (314580075): presentation slides.
+\item \zh{吳美真} (414551035): paper writing (\S1--9).
+\item \zh{孫傅康} (112550176): coding of the pipeline and experiments (\S5--8).
+\item \zh{傅維雨} (112550149): team organization.
+\item \zh{張凱華} (315554024): paper review.
+\item \zh{李玠廷} (315554034): data collection (\S3, Table~2).
+\end{itemize}
+\textbf{AI usage.} We used Claude Code (Anthropic, Claude Opus 5.5) to check data availability, write the data and experiment code, run the experiments and draft the text and figures. The team chose the topic, the target user and the initial project brief, and is responsible for every result. Every citation was checked against Crossref or the publisher's page.
+
+\bibliography{refs}
+
+\end{document}

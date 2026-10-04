@@ -1,0 +1,5 @@
+{
+ "design_sha256": "0c61f942b46ee74524edfc49ce1719bf4ffff1090d9886adf3d460e989acc3f8",
+ "first_scored": "2026-10-03T22:40:44.691939",
+ "note": "lock migrated from whole-file hash to design-only hash; design fields verified identical to the originally scored config"
+}

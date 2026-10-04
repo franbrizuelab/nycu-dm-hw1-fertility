@@ -1,0 +1,138 @@
+train rows 1305 (t 1955-1995), test rows 290 (t [np.int64(2005), np.int64(2010)])
+
+Set B columns on full training data: ['tfr', 'q5', 'edu_f2564', 'edu_f1524', 'edu_m2564']
+
+diagnostic hinge vs education:
+                              set  alpha  CV_MAE  CV_MAE_sd                     fold_MAE  Test_MAE
+C minus education, keep TFR hinge  0.001  0.3384     0.0662 [0.363, 0.411, 0.326, 0.254]    0.2369
+                      Set C: ours  0.001  0.3281     0.0518 [0.373, 0.371, 0.297, 0.271]    0.2240
+   C with adult (25-64) schooling  0.001  0.3311     0.0549 [0.373, 0.384, 0.286, 0.281]    0.2314
+                C plus gender gap  0.001  0.3273     0.0491  [0.366, 0.37, 0.304, 0.269]    0.2232
+
+main results:
+                          method  CV_MAE  CV_MAE_sd  CV_RMSE  CV_RMSE_sd  Test_MAE  Test_RMSE  Test_R2  Test_Hit
+                   Training mean   1.943      0.061    2.185       0.040     1.824      2.003   -1.378     0.041
+                     Persistence   0.661      0.102    0.859       0.131     0.378      0.497    0.854     0.372
+                    Damped trend   0.425      0.089    0.582       0.119     0.303      0.395    0.908     0.403
+  Single-feature OLS (schooling)   0.807      0.034    1.045       0.056     0.657      0.820    0.602     0.186
+             Random forest (raw)   0.354      0.040    0.478       0.063     0.276      0.386    0.912     0.497
+         Gradient boosting (raw)   0.347      0.044    0.457       0.076     0.273      0.377    0.916     0.493
+              Ridge (raw, Set A)   0.367      0.068    0.491       0.097     0.278      0.361    0.923     0.466
+Ours: Ridge + engineered (Set C)   0.328      0.052    0.445       0.069     0.224      0.300    0.947     0.562
+           Random forest (Set C)   0.342      0.025    0.443       0.025     0.260      0.346    0.929     0.493
+
+test MAE gap ours - baseline (country-cluster bootstrap 95% CI):
+                     vs    gap  ci_lo  ci_hi
+Gradient boosting (raw) -0.049 -0.073 -0.025
+    Random forest (raw) -0.052 -0.079 -0.028
+  Random forest (Set C) -0.036 -0.058 -0.016
+           Damped trend -0.079 -0.107 -0.051
+     Ridge (raw, Set A) -0.054 -0.082 -0.026
+            Persistence -0.154 -0.203 -0.102
+
+ours test MAE 0.224 [0.200, 0.250]; threshold 0.2
+
+min prediction ours 0.852
+
+ablation (test):
+                              set  CV_MAE  CV_MAE_sd  Test_MAE
+               Set A: raw columns   0.367      0.068     0.278
+   Set B: top-5 raw by |Spearman|   0.349      0.048     0.247
+                      Set C: ours   0.328      0.052     0.224
+          C minus education_stage   0.345      0.065     0.228
+C minus education, keep TFR hinge   0.338      0.066     0.237
+   C with adult (25-64) schooling   0.331      0.055     0.231
+                C plus gender gap   0.327      0.049     0.223
+
+test slices (MAE; bias = mean actual-pred):
+       by                           slice   n  Set A  C w/o edu  Set C  GBM (raw)  bias C
+stage_bin                            <2.5 154  0.250      0.205  0.173      0.185   0.008
+stage_bin                           2.5-4  75  0.310      0.208  0.252      0.315   0.167
+stage_bin                           4-5.5  35  0.289      0.269  0.315      0.503   0.219
+stage_bin                           >=5.5  26  0.336      0.360  0.325      0.362  -0.050
+   region              Advanced Economies  48  0.142      0.165  0.144      0.148  -0.075
+   region       East Asia and the Pacific  38  0.339      0.245  0.206      0.276   0.066
+   region         Europe and Central Asia  38  0.425      0.213  0.208      0.260   0.132
+   region Latin America and the Caribbean  50  0.186      0.167  0.161      0.191   0.028
+   region    Middle East and North Africa  36  0.343      0.300  0.288      0.359   0.174
+   region                      South Asia  14  0.261      0.185  0.210      0.167  -0.021
+   region              Sub-Saharan Africa  66  0.294      0.287  0.317      0.407   0.134
+
+education gap on test, all (n=290): -0.004 [-0.021, 0.015]
+
+education gap on test, TFR>=4.0 (n=61): 0.011 [-0.054, 0.082]
+
+education gap on test, TFR<4.0 (n=229): -0.008 [-0.021, 0.007]
+
+education gap given the hinge, test, all: -0.013 [-0.027, 0.000]
+
+education gap given the hinge, test, TFR>=4.0: -0.013 [-0.062, 0.036]
+
+education gap given the hinge, test, TFR<4.0: -0.013 [-0.024, -0.002]
+
+t=2005: MAE ours 0.241, bias +0.155; persistence MAE 0.360
+
+t=2010: MAE ours 0.207, bias -0.016; persistence MAE 0.395
+
+OLS, standardized features, country-clustered SE (n=1305, 145 clusters), R2=0.938:
+    feature  beta_ols   ci_lo   ci_hi      p     vif  beta_ridge  ridge_boot_lo  ridge_boot_hi     sd
+        tfr    1.4234  1.2962  1.5505 0.0000 16.2967      1.4234         1.2895         1.5595 2.0392
+         d5    0.2055  0.1164  0.2945 0.0000  1.2362      0.2055         0.1206         0.2973 0.3907
+  edu_f1524   -0.1373 -0.2143 -0.0602 0.0005  5.2272     -0.1373        -0.2188        -0.0650 3.3332
+edu_x_stage   -0.2124 -0.3089 -0.1160 0.0000  3.0623     -0.2124        -0.3179        -0.1257 4.6317
+      stage    0.5364  0.3848  0.6881 0.0000 12.0847      0.5364         0.3828         0.6936 1.3120
+
+effect of +1 year female schooling (15-24) on TFR(t+10), children/woman, clustered 95% CI:
+ tfr_t  effect_per_year  ci_lo  ci_hi
+   2.0           -0.041 -0.064 -0.018
+   3.0           -0.041 -0.064 -0.018
+   4.0           -0.041 -0.064 -0.018
+   5.0           -0.087 -0.115 -0.059
+   6.0           -0.133 -0.176 -0.090
+   7.0           -0.179 -0.241 -0.117
+
+raw-unit OLS coefficients:
+const          0.8657
+tfr            0.6980
+d5             0.5259
+edu_f1524     -0.0412
+edu_x_stage   -0.0459
+stage          0.4089
+
+largest test errors:
+                 country    t  target_year  tfr    d5  edu_f1524    y  pred   err  pred_noedu
+                Mongolia 2005         2015 1.99 -0.26       8.88 3.01  1.75  1.26        1.68
+                Zimbabwe 2005         2015 3.69 -0.32       8.53 3.91  2.93  0.99        3.18
+Central African Republic 2005         2015 5.81 -0.04       3.15 6.13  5.25  0.87        5.30
+              Kyrgyzstan 2005         2015 2.64  0.07       9.37 3.21  2.36  0.85        2.53
+                   Egypt 2005         2015 3.25 -0.25       8.15 3.50  2.67  0.83        2.83
+                   Yemen 2010         2020 4.81 -0.75       4.80 4.60  3.78  0.82        3.85
+                   Niger 2010         2020 7.64 -0.13       2.08 6.37  7.19 -0.82        6.88
+                  Israel 2005         2015 2.79 -0.13      10.42 3.09  2.32  0.77        2.51
+
+East Asia focus:
+                                       country    t  target_year  tfr    d5  edu_f1524    y  pred   err  pred_noedu
+                                         China 2005         2015 1.62 -0.00       8.80 1.67  1.63  0.04        1.55
+                                         China 2010         2020 1.69  0.06       9.57 1.24  1.68 -0.45        1.66
+China, Hong Kong Special Administrative Region 2005         2015 0.96 -0.07      13.76 1.23  0.93  0.30        0.90
+China, Hong Kong Special Administrative Region 2010         2020 1.12  0.16      13.57 0.89  1.17 -0.28        1.22
+                                         Japan 2005         2015 1.25 -0.10      12.34 1.42  1.17  0.24        1.13
+                                         Japan 2010         2020 1.36  0.11      12.01 1.30  1.38 -0.07        1.40
+                             Republic of Korea 2005         2015 1.12 -0.35      12.68 1.20  0.94  0.27        0.82
+                             Republic of Korea 2010         2020 1.23  0.11      13.30 0.81  1.23 -0.42        1.28
+                                     Singapore 2005         2015 1.07 -0.27      11.08 0.98  1.02 -0.04        0.85
+                                     Singapore 2010         2020 0.93 -0.14      12.91 0.94  0.91  0.03        0.82
+                                        Taiwan 2005         2015 1.13 -0.34      12.71 1.18  0.96  0.23        0.85
+                                        Taiwan 2010         2020 0.92 -0.22      13.08 0.99  0.85  0.14        0.75
+
+residual vs TFR(t): corr 0.072; share of over-prediction among TFR(t)<2: 0.47
+
+leave-one-region-out (train without region, test on it):
+                         region  n  MAE_in  MAE_held_out
+             Advanced Economies 48   0.144         0.143
+      East Asia and the Pacific 38   0.206         0.206
+        Europe and Central Asia 38   0.208         0.199
+Latin America and the Caribbean 50   0.161         0.165
+   Middle East and North Africa 36   0.288         0.289
+                     South Asia 14   0.210         0.217
+             Sub-Saharan Africa 66   0.317         0.342

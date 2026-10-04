@@ -1,0 +1,79 @@
+split counts:
+       rows  countries  t_min  t_max
+split                               
+gap     145        145   2000   2000
+test    290        145   2005   2010
+train  1305        145   1955   1995
+
+association (n=1046):
+    feature  pearson_y  spearman_y  MI_y  pearson_dy  partial_y_given_tfr
+        tfr      0.950       0.958 1.251      -0.198                  NaN
+       tfr2      0.957       0.958 1.244      -0.129                  NaN
+     log_q5      0.881       0.905 0.872      -0.049                0.441
+         q5      0.874       0.905 0.846       0.182                0.572
+  edu_f2534     -0.842      -0.860 0.655       0.063               -0.264
+  edu_f1524     -0.845      -0.843 0.613      -0.020               -0.341
+  edu_m2564     -0.823      -0.848 0.600       0.041               -0.301
+  edu_f2564     -0.818      -0.849 0.584       0.101               -0.192
+edu_avg1524     -0.836      -0.837 0.582      -0.034               -0.362
+edu_x_stage      0.630       0.800 0.528      -0.181               -0.324
+  edu_m1524     -0.805      -0.808 0.486      -0.050               -0.364
+  log_gdppc     -0.686      -0.732 0.411       0.020               -0.237
+      gdppc     -0.280      -0.732 0.398      -0.020               -0.112
+      urban     -0.540      -0.511 0.276      -0.183               -0.282
+         d5      0.304       0.311 0.268       0.401                0.363
+edu_gap1524     -0.515      -0.545 0.199       0.074                0.016
+
+VIF raw:
+tfr           5.4
+edu_f1524    32.2
+edu_f2564    31.9
+edu_m1524    25.0
+edu_m2564    30.5
+log_q5        9.8
+log_gdppc     3.2
+urban         1.5
+
+r(edu_f1524, edu_m1524) = 0.957; r(edu_f1524, edu_f2564) = 0.932; r(tfr, log_q5) = 0.885
+
+H3 partial r(gap, y | avg schooling, tfr, tfr2) = 0.054
+
+H4 partial r(edu_f1524, y | ['log_gdppc']) = -0.699
+
+H4 partial r(edu_f1524, y | ['log_gdppc', 'log_q5']) = -0.328
+
+H4 partial r(edu_f1524, y | ['log_gdppc', 'log_q5', 'urban']) = -0.334
+
+H4 partial r(edu_f1524, y | ['tfr', 'tfr2']) = -0.341
+
+H4 partial r(edu_f1524, y | ['tfr', 'tfr2', 'd5', 'log_gdppc', 'log_q5']) = -0.093
+
+H4 raw r(edu_f1524, y) = -0.845
+
+cohort lag curve (n=1305):
+ band  spearman_y  partial_y_given_tfr
+15-19      -0.789               -0.326
+20-24      -0.850               -0.328
+25-29      -0.848               -0.274
+30-34      -0.846               -0.235
+35-39      -0.839               -0.185
+40-44      -0.833               -0.153
+45-49      -0.815               -0.116
+50-54      -0.799               -0.091
+55-59      -0.776               -0.066
+60-64      -0.756               -0.049
+
+stage slices: partial r(edu_f1524, future change | tfr), country-cluster bootstrap CI:
+stage   n  mean_dy  sd_dy  partial_r  ci_lo  ci_hi
+ <2.5 315   -0.179  0.303     -0.180 -0.310 -0.050
+2.5-4 233   -0.636  0.431     -0.116 -0.271  0.060
+4-5.5 191   -0.996  0.716     -0.189 -0.340 -0.014
+>=5.5 566   -0.516  0.726     -0.484 -0.589 -0.382
+
+H5 slope of future change on edu_f1524 | tfr, by start decade:
+ decade   n  slope_edu    se  intercept_mean_dy
+   1950 145     -0.091 0.023             -0.062
+   1960 290     -0.170 0.022             -0.481
+   1970 290     -0.112 0.018             -0.583
+   1980 290     -0.074 0.018             -0.669
+   1990 290     -0.025 0.016             -0.605

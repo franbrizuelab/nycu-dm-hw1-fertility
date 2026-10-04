@@ -1,0 +1,149 @@
+PROJECT BRIEF - NYCU Data Mining HW1 (Linear Regression, ACL-style short paper)
+Topic: Does women's education today predict a country's fertility 10 years from now?
+Scope of this brief: task definition, Section 4 (Exploratory Feature Analysis) and Section 6 (Experimental Setup).
+Deadline: report + slides on E3 by Mon 2026-10-19 23:59. Presentation Tue 2026-10-20 (8 min).
+
+======================================================================
+0. TASK DEFINITION (everything else depends on this)
+======================================================================
+- One row: a country at start year t, t = 1960, 1965, ..., 2010 (Barro-Lee 5-year steps).
+- Target: total fertility rate (TFR) at t+10, in children per woman (UN World Population Prospects).
+  Plausible range ~0.7-8.
+- Features (all measured at time t): female schooling, male schooling, current TFR, log GDP per capita
+  (Penn World Table), child mortality (UN WPP), urbanization, region.
+- Expected size: ~140 countries x 11 start years = ~1,500 rows.
+- User / decision: planners sizing school capacity, pensions and labor supply a decade ahead
+  (e.g. Taiwan is now merging and closing schools for lack of children).
+
+DATA TRAPS
+- Barro-Lee and UN WPP both contain PROJECTIONS for recent/future years. Every target must be an observed
+  estimate, not a UN projection. Cut off start years accordingly and state this in Section 3.
+- Taiwan is NOT in World Bank / UNESCO data. It IS in Barro-Lee, UN WPP, Penn World Table, V-Dem.
+  Use only features available for Taiwan, or fill Taiwan from its own government statistics (DGBAS, MOE).
+- Verify actual coverage of every source before building the pipeline.
+
+======================================================================
+1. SECTION 4 - EXPLORATORY FEATURE ANALYSIS (10 pts)
+======================================================================
+Spec requirements: >=1 figure of target vs key features; association stats (Pearson/Spearman/MI);
+redundancy check; keep/transform/drop decisions; hypotheses H1, H2... to revisit in Section 8.1;
+TRAINING PORTION ONLY (start years <= 1995, see Section 6).
+
+4.1 Transition-curve figure (required figure) -> H1
+  Scatter: future TFR vs female years of schooling, colored by decade. Overlay faint trajectories for a few
+  training-period countries (e.g. Korea, Iran, Brazil, Niger).
+  Expected: near-linear decline that flattens around 10+ years of schooling (fertility floor).
+  H1: each extra year of female schooling lowers future TFR roughly linearly, with diminishing effect at
+  high schooling.
+  Decision: hinge feature max(0, 10 - schooling) or log transform.
+
+4.2 "Which cohort matters" lag curve -> H2 (most creative piece)
+  Barro-Lee gives schooling by age group. Women 15-24 at t are in peak childbearing years at t+10.
+  Correlate future TFR with schooling of each age group (15-19, 20-24, 25-29, ..., adults 25+).
+  H2: the cohort that will be having children predicts better than average schooling of adults 25+.
+  Decision: choose the education feature by demographic logic (domain-derived feature for Section 5).
+
+4.3 Redundancy: women vs men -> H3
+  Female and male schooling likely correlate r >= 0.9. Report correlation matrix / VIF.
+  Decision: replace both with average schooling + gender gap (female - male).
+  H3: at equal average schooling, a smaller female disadvantage predicts lower fertility.
+
+4.4 Confounder test: is it really education? -> H4
+  Education, log GDP, child mortality and urbanization are intertwined. Correlation heatmap, then partial
+  correlation of schooling with future TFR controlling for GDP and child mortality.
+  H4: education keeps predictive power after controlling for income.
+  (Real academic debate: Lutz and colleagues argue education drives fertility decline; economic explanations
+  emphasize income. VERIFY any citation before using it.)
+  Answered later with coefficients + VIF in Section 8.1 (mirrors the spec's solar/temperature example).
+
+4.5 Look at the change, not just the level
+  Persistence dominates (TFR at t predicts TFR at t+10 well). Also plot 10-year change in TFR vs schooling
+  to see what education adds beyond the starting point. Early warning for the Section 7 ablation.
+
+4.6 Stability of the relationship over time -> H5
+  Fit the schooling slope separately per training decade (1960s-1990s), plot with CIs.
+  H5: slope roughly stable across decades (core assumption of a temporal forecast).
+  Decision: if it drifts, add schooling x decade interaction or time trend, or list as a limitation.
+
+4.7 Pearson vs Spearman vs mutual information table
+  For each candidate feature. Spearman/MI >> Pearson => monotone but curved => transform.
+  The same ranking defines Set B (top-k correlated) for the Section 7.2 ablation (selected inside each fold).
+
+Narrative device: the test period (post-2005) contains East Asia's ultra-low fertility (Taiwan TFR ~0.87 in
+2023). State explicitly that it was not inspected during exploration, so whether the model anticipates it is
+a genuine out-of-sample test that sets up the Taiwan case in Section 8.2.
+
+======================================================================
+2. SECTION 6 - EXPERIMENTAL SETUP (10 pts)
+======================================================================
+6.1 Validation: "a planner standing in year X"
+  Key subtlety: the 10-year GAP (embargo). A planner in 2005 only knows outcomes up to 2005, so training
+  rows must have TARGET year <= test prediction year. With test start years 2005 & 2010, training uses
+  start years <= 1995; rows with t = 2000 (target 2010) are DROPPED.
+
+  Role        | Start years t                   | Purpose
+  CV fold 1   | train <= 1970, validate 1980    | tuning
+  CV fold 2   | train <= 1975, validate 1985    | tuning
+  CV fold 3   | train <= 1980, validate 1990    | tuning
+  CV fold 4   | train <= 1985, validate 1995    | tuning
+  Final       | train <= 1995, test 2005 & 2010 | evaluate ONCE
+
+  - 4 folds: limited by number of 5-year periods; each fold = full cross-section of ~140 countries.
+  - sklearn TimeSeriesSplit gap counts rows, not years -> build folds by year manually.
+  - Save fold indices to a file; every method uses identical folds (spec requirement).
+  - Report mean +/- std across folds.
+  - Preprocessing (scaling, imputation) fit inside each fold via sklearn Pipeline.
+  - Why not GroupKFold: the user forecasts KNOWN countries into the future, so a country's past is
+    legitimate information. Address it anyway with the stress test below.
+
+6.2 Secondary stress test: leave-one-region-out
+  Train on all regions except one (e.g. East Asia), predict it. Tests whether a model that never saw East
+  Asia predicts its fertility collapse. Label clearly as a robustness check, not the primary protocol.
+
+6.3 Metrics
+  - MAE (children per woman): typical error.
+  - RMSE: penalizes large misses (schools built/closed in the wrong place).
+  - R^2: context only (inflated by between-country variance).
+  - No MAPE headline; report a slice for low-fertility countries (TFR < 2).
+
+6.4 Decision threshold
+  The UN publishes high/low fertility variants at about +/-0.5 children per woman around its medium
+  projection (VERIFY in UN WPP methodology docs). Threshold: MAE <= 0.25 children per woman, i.e. within
+  half the UN scenario band; otherwise planners gain nothing over standard high/low scenarios.
+  Optionally translate into planner units (e.g. number of first-grade classes for Taiwan's cohort size).
+
+6.5 Baselines (trivial -> simple -> strong)
+  - Training mean (trivial).
+  - Persistence: TFR(t+10) = TFR(t). Strong but biased; over-predicts because fertility mostly declines.
+  - Damped trend: continue half of the last decade's change (optional, demographer's naive rule).
+  - Single-feature OLS on female schooling (simple).
+  - Random forest / gradient boosting on raw inputs (strong, required).
+  Built-in explanation for win/lose vs strong baseline: tree models cannot extrapolate below the lowest
+  training TFR; the test period has record lows (Korea ~0.7) never seen in training. Linear models can
+  extrapolate but may overshoot below zero -> clip predictions or discuss.
+  Optional ambitious benchmark: compare with an archived older UN WPP revision's projections for 2015/2020,
+  if obtainable.
+
+6.6 Significance
+  Paired t-test over 4 folds has little power. Use a COUNTRY-level bootstrap on the test set (resample
+  countries, not rows) for a 95% CI of the MAE gap vs the best baseline. Name the test in the paper.
+
+======================================================================
+3. WHERE THE OTHER STORIES GO (keep light)
+======================================================================
+- Section 1/2: one or two sentences placing fertility within "unintended consequences of educating a
+  population": Taiwan's democratization (education -> democracy, V-Dem) and export upgrading (education ->
+  economic complexity, Harvard Atlas). One verified citation each.
+- Section 9: future work - same framework could forecast democratization or export complexity.
+- Presentation: one ~20-second motivation slide on Taiwan's arc: educated workforce -> semiconductors ->
+  democratic transition -> record-low fertility and school closures.
+
+======================================================================
+4. GENERAL RULES FOR THE AGENT
+======================================================================
+- Frame as prediction + interpretation, NOT causation.
+- Every reference must be real and verifiable (fabricated references are penalized). Check each one.
+- Use only information available at prediction time; never use the test set for tuning or selection.
+- Figures numbered, captioned, referenced, axes labeled with units.
+- Max 6 pages excl. references; GitHub repo URL on page 1 below the title (otherwise report scores 0).
+- File names exactly: HW1_<TeamID>_report.pdf, HW1_<TeamID>_presentation.pptx/.pdf inside HW1_<TeamID>.zip.

@@ -1,0 +1,4 @@
+split,rows,countries,t_min,t_max
+gap,145,145,2000,2000
+test,290,145,2005,2010
+train,1305,145,1955,1995
