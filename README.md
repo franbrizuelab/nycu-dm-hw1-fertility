@@ -53,17 +53,4 @@ All of these include Taiwan. Exact URLs and checksums are in `data/raw/MANIFEST.
 
 ## Team
 
-Team ID: **13**.
-
-| Student ID | Name |
-|---|---|
-| 314580057 | 李尚哲 |
-| 314580055 | 呂丞頤 |
-| 314580075 | 黃駿甯 |
-| 414551035 | 吳美真 |
-| 112550176 | 孫傅康 |
-| 112550149 | 傅維雨 |
-| 315554024 | 張凱華 |
-| 315554034 | 李玠廷 |
-
-Contributions and the AI usage statement are in the paper.
+Team 13, NYCU Data Mining. Members and contributions are listed in the paper.
